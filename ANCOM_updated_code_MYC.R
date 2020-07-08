@@ -204,7 +204,7 @@ ancom.W.myc = function(otu_data,var_data,
   # order mapping file by samples
   data_comp_sorted <- data_comp[match(rownames(otu_data_relAbund),data_comp[["Sample.ID"]]),]
 
-  aveRelAbund <- matrix(ncol=length(unique(data_comp_sorted[[main.var]])), nrow=length(otu_ids), dimnames = list(otu_ids, paste0(levels(data_comp[[main.var]]), "_relAbund"))) 
+  aveRelAbund <- matrix(ncol=length(unique(data_comp_sorted[[main.var]])), nrow=length(otu_ids), dimnames = list(otu_ids, paste0(levels(factor(data_comp[[main.var]])), "_relAbund"))) 
   f.stat <- matrix(ncol=1, nrow=length(otu_ids), dimnames = list(otu_ids, "W_f")) 
   for ( i in otu_ids) {
     aveRelAbund[i,] <- aggregate(otu_data_relAbund[,i], by=list(data_comp_sorted[[main.var]]), FUN=median)[,"x"]
