@@ -5,16 +5,17 @@
 
 
 ### Required libraries ####
+library(tidyverse)
 library(exactRankTests)
 library(nlme)
 library(ggplot2)
 library(cowplot) # For extracting legend ###MYC
 
 ancom.W.myc = function(otu_data,var_data,
-                   adjusted,repeated,
-                   main.var,adj.formula,
-                   repeat.var,long,rand.formula,
-                   multcorr,sig){
+                       adjusted,repeated,
+                       main.var,adj.formula,
+                       repeat.var,long,rand.formula,
+                       multcorr,sig){
   
   # number of otus
   n_otu=dim(otu_data)[2]-1
@@ -29,7 +30,7 @@ ancom.W.myc = function(otu_data,var_data,
     # practice good naming technique... but alas. ###MYC
   }else if(repeated==T){
     data_comp=data.frame(merge(otu_data,var_data,by="Sample.ID"),row.names=NULL)
-   # data_comp=data.frame(merge(otu_data,var_data[,c("Sample.ID",main.var,repeat.var)],by="Sample.ID"),row.names=NULL)
+    # data_comp=data.frame(merge(otu_data,var_data[,c("Sample.ID",main.var,repeat.var)],by="Sample.ID"),row.names=NULL)
   }
   
   base.formula = paste0("lr ~ ",main.var)
@@ -57,21 +58,21 @@ ancom.W.myc = function(otu_data,var_data,
   
   
   
-    if( repeated==FALSE & adjusted == FALSE){
-       if( length(unique(data_comp[,which(colnames(data_comp)==main.var)]))==2 ){
-          tfun <- exactRankTests::wilcox.exact
-       } else{
-          tfun <- stats::kruskal.test
+  if( repeated==FALSE & adjusted == FALSE){
+    if( length(unique(data_comp[,which(colnames(data_comp)==main.var)]))==2 ){
+      tfun <- exactRankTests::wilcox.exact
+    } else{
+      tfun <- stats::kruskal.test
     }
-    }else if( repeated==FALSE & adjusted == TRUE){
-      tfun <- stats::aov
-    }else if( repeated== TRUE & adjusted == FALSE & long == FALSE){
-      tfun <- stats::friedman.test
-    }else if( repeated== TRUE & adjusted == FALSE & long == TRUE){
-      tfun <- nlme::lme
-    }else if( repeated== TRUE & adjusted == TRUE){
-      tfun <- nlme::lme
-    }
+  }else if( repeated==FALSE & adjusted == TRUE){
+    tfun <- stats::aov
+  }else if( repeated== TRUE & adjusted == FALSE & long == FALSE){
+    tfun <- stats::friedman.test
+  }else if( repeated== TRUE & adjusted == FALSE & long == TRUE){
+    tfun <- nlme::lme
+  }else if( repeated== TRUE & adjusted == TRUE){
+    tfun <- nlme::lme
+  }
   
   logratio.mat <- matrix(NA, nrow=n_otu, ncol=n_otu)
   # For progress bar
@@ -166,7 +167,7 @@ ancom.W.myc = function(otu_data,var_data,
   class(OGmat) <- "numeric"
   OGmat_1 <- OGmat+1
   dim.mat <- dim(OGmat_1)
-
+  
   clr.myc <- function(mat, dim) {
     mat=OGmat_1
     dim=dim.mat
@@ -194,7 +195,7 @@ ancom.W.myc = function(otu_data,var_data,
   otu_clr <- clr.myc(OGmat_1)
   colnames(otu_clr) <- colnames(OGmat_1)
   otu_clr_t <- t(otu_clr)
-
+  
   ### NOTE: I have confirmed that these values are the SAME as the clr function in the compositions package
   
   #####################
@@ -203,7 +204,7 @@ ancom.W.myc = function(otu_data,var_data,
   otu_data_relAbund <- t(OGmat)/rowSums(t(OGmat))
   # order mapping file by samples
   data_comp_sorted <- data_comp[match(rownames(otu_data_relAbund),data_comp[["Sample.ID"]]),]
-
+  
   aveRelAbund <- matrix(ncol=length(unique(data_comp_sorted[[main.var]])), nrow=length(otu_ids), dimnames = list(otu_ids, paste0(levels(factor(data_comp[[main.var]])), "_relAbund"))) 
   f.stat <- matrix(ncol=1, nrow=length(otu_ids), dimnames = list(otu_ids, "W_f")) 
   for ( i in otu_ids) {
@@ -216,17 +217,17 @@ ancom.W.myc = function(otu_data,var_data,
   return(list(W
               , f.stat
               , aveRelAbund))
-  }
+}
 
 
 
 ANCOM.main.myc = function(OTUdat,Vardat,
-                      adjusted,repeated,
-                      main.var,adj.formula,
-                      repeat.var,longitudinal,
-                      random.formula,
-                      multcorr,sig,
-                      prev.cut){
+                          adjusted=F,repeated=F,
+                          main.var,adj.formula,
+                          repeat.var,longitudinal,
+                          random.formula,
+                          multcorr=1,sig=0.05,
+                          prev.cut){
   print("Removing high zero samples...") ### MYC
   p.zeroes=apply(OTUdat[,-1],2,function(x){
     s=length(which(x==0))/length(x)
@@ -236,10 +237,10 @@ ANCOM.main.myc = function(OTUdat,Vardat,
   colnames(zeroes.dist)=c("Taxon","Proportion_zero")
   
   zero.plot = ggplot(zeroes.dist, aes(x=Proportion_zero)) + 
-              geom_histogram(binwidth=0.1,colour="black",fill="white") + 
-              xlab("Proportion of zeroes") + ylab("Number of taxa") +
-              theme_bw() +
-              geom_vline(aes(xintercept=prev.cut), col="red", lty=2)
+    geom_histogram(binwidth=0.1,colour="black",fill="white") + 
+    xlab("Proportion of zeroes") + ylab("Number of taxa") +
+    theme_bw() +
+    geom_vline(aes(xintercept=prev.cut), col="red", lty=2)
   
   #print(zero.plot)
   
@@ -247,12 +248,12 @@ ANCOM.main.myc = function(OTUdat,Vardat,
   OTUdat.thinned=OTUdat.thinned[,c(1,1+which(p.zeroes<prev.cut))]
   
   otu.names=colnames(OTUdat.thinned)[-1]
-
+  
   W.detected   <- ancom.W.myc(OTUdat.thinned,Vardat,
-                          adjusted,repeated,
-                          main.var,adj.formula,
-                          repeat.var,longitudinal,random.formula,
-                          multcorr,sig)
+                              adjusted,repeated,
+                              main.var,adj.formula,
+                              repeat.var,longitudinal,random.formula,
+                              multcorr,sig)
   
   W_stat       <- W.detected[[1]] ### MYC
   W_f <- W.detected[[2]] ### MYC
@@ -302,14 +303,14 @@ ANCOM.main.myc = function(OTUdat,Vardat,
     
   }
   top_w_crit_mat <- w_crit_mat %>%
-      as.data.frame() %>%
-      filter(cond_satisfied==1) %>%
-      arrange((tau)) 
+    as.data.frame() %>%
+    filter(cond_satisfied==1) %>%
+    arrange((tau)) 
   final_w<- top_w_crit_mat[1,c("start","d", "tau")]
   # Get W that we are looking for
   w_crit <- bins[seq(100-as.numeric(final_w[1]),1,by=-3)][as.numeric(final_w[2]+1)]
   tau_w <- as.numeric(final_w[3])
-
+  
   w.pred <- seq(min(W_frame$W_stat),max(W_frame$W_stat), length.out=100)
   cdf.w.pred <- cdf.w(w.pred)
   plot.cdf.w <- data.frame(w.pred, cdf.w.pred) %>%
@@ -372,10 +373,10 @@ ANCOM.main.myc = function(OTUdat,Vardat,
     volcano.plot.top <- volcano.plot +
       geom_point(data=onlyTop, mapping=aes(x=W_f, y=W_stat, col=otu.names), show.legend = FALSE)
     if ( nrow(onlyTop)>0 ) {
-        v.leg <- get_legend(volcano.plot +
-                                geom_point(data=onlyTop, mapping=aes(x=W_f, y=W_stat, col=otu.names)))
+      v.leg <- get_legend(volcano.plot +
+                            geom_point(data=onlyTop, mapping=aes(x=W_f, y=W_stat, col=otu.names)))
     } else {
-        v.leg <- NA
+      v.leg <- NA
     }
     volcano.plot.top <- volcano.plot.top +
       geom_hline(mapping=aes(yintercept=w_crit), col="red", lty=2)
@@ -384,20 +385,20 @@ ANCOM.main.myc = function(OTUdat,Vardat,
   ### Automatic 0.9
   volcano.plot.auto <- volcano.plot
   volcano.plot.auto <- volcano.plot.auto +
-      geom_vline(mapping=aes(xintercept=quantile(W_frame$W_f, probs = 0.9)), col="red", lty=2) +
-      geom_hline(mapping=aes(yintercept=0.9*(dim(OTUdat.thinned[,-1])[2]-1)), col="red", lty=2)
+    geom_vline(mapping=aes(xintercept=quantile(W_frame$W_f, probs = 0.9)), col="red", lty=2) +
+    geom_hline(mapping=aes(yintercept=0.9*(dim(OTUdat.thinned[,-1])[2]-1)), col="red", lty=2)
   onlyautotop <- W_frame %>%
-          filter(detected_0.9==TRUE, effSize_0.9==TRUE)
+    filter(detected_0.9==TRUE, effSize_0.9==TRUE)
   if ( nrow(onlyautotop) >0) {
-      volcano.plot.auto.top <- volcano.plot.auto +
-          geom_point(data=onlyautotop, mapping=aes(x=W_f, y=W_stat, col=otu.names), show.legend = FALSE)
-      v.leg.auto <- get_legend(volcano.plot.auto +
-                                   geom_point(data=onlyautotop, mapping=aes(x=W_f, y=W_stat, col=otu.names)))
+    volcano.plot.auto.top <- volcano.plot.auto +
+      geom_point(data=onlyautotop, mapping=aes(x=W_f, y=W_stat, col=otu.names), show.legend = FALSE)
+    v.leg.auto <- get_legend(volcano.plot.auto +
+                               geom_point(data=onlyautotop, mapping=aes(x=W_f, y=W_stat, col=otu.names)))
   } else {
-      volcano.plot.auto.top <- volcano.plot.auto
-      v.leg.auto <- NA
+    volcano.plot.auto.top <- volcano.plot.auto
+    v.leg.auto <- NA
   }
-
+  
   final_results=list(W_frame,zero.plot,volcano.plot.top, volcano.plot.auto.top, plot.cdf.w,data.frame(w_crit, tau_w))
   names(final_results)=c("W.taxa","PLot.zeroes","Plot.volcano", "Plot.volcano.0.9", "Plot.critical.w", "Critical.values")
   print("Done")
